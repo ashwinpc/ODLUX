@@ -1,0 +1,81 @@
+services:
+  persistence: 
+    image: docker.elastic.co/elasticsearch/elasticsearch-oss:7.9.3
+    container_name: persistence
+    environment:
+      - discovery.type=single-node
+    networks:
+      integration:
+        ipv4_address: 172.40.0.30
+        ipv6_address: 2001:db8:1:1::30
+
+  odlux:
+    image: nexus3.onap.org:10001/onap/sdnc-web-image:2.4.2
+    container_name: odlux
+    hostname: odlux
+    ports:
+      - "8080:8080"
+    environment:
+      ENABLE_OAUTH: false
+      WEBPROTOCOL: HTTP
+      WEBPORT: 8080
+      SDNRPROTOCOL: http
+      SDNRHOST: controller
+      SDNRPORT: 8181
+    depends_on:
+      controller:
+        condition: service_healthy
+    networks:
+      integration:
+        ipv4_address: 172.40.0.40
+        ipv6_address: 2001:db8:1:1::40
+
+  controller:
+    image: nexus3.onap.org:10001/onap/sdnc-image:2.4.2
+    container_name: controller
+    hostname: controller
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://localhost:8181/ready || exit 1
+      start_period: 60s
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "8181:8181"
+      - "8101:8101"
+    environment:
+      ENABLE_ODL_CLUSTER: false
+      ENABLE_OAUTH: false
+      ODL_CERT_DIR: /opt/opendaylight/current/certs
+      ODL_ADMIN_PASSWORD: admin
+      SDNC_CONFIG_DIR: /opt/onap/ccsdk/data/properties
+      SDNC_REPLICAS: 0
+      CCSDK_REPLICAS: 0
+      DOMAIN: ""
+      SDNRWT: true
+      SDNRONLY: true
+      SDNRINIT: true
+      SDNRDBURL: http://persistence:9200
+      SDNR_NETCONF_CALLHOME_ENABLED: true
+      A1_ADAPTER_NORTHBOUND: false
+      JAVA_OPTS: -Xms256m -Xmx4g
+      SDNR_VES_COLLECTOR_ENABLED: false
+    volumes:
+      - ./controller/certs/certs.properties:/opt/opendaylight/current/certs/certs.properties
+      - ./controller/certs/keys0.zip:/opt/opendaylight/current/certs/keys0.zip
+    networks:
+      integration:
+        ipv4_address: 172.40.0.21
+        ipv6_address: 2001:db8:1:1::21
+
+networks:
+  integration:
+    driver: bridge
+    enable_ipv6: true
+    ipam:
+      driver: default
+      config:
+      - subnet: 172.40.0.0/16
+        gateway: 172.40.0.1
+      - subnet: 2001:db8:1:1::/64
+        gateway: 2001:db8:1:1::1
