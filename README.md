@@ -7,3 +7,13 @@ Steps to try:
 4. Login and admin/admin.
 
 You are all set, have fun.
+
+
+Node server run command:
+1.npm install
+2.Run the Server:node index.js 
+
+App start
+
+1. npm install
+2. npm start
